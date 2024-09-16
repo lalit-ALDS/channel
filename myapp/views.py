@@ -9,3 +9,5 @@ def room(request, room_name):
     return render(request, template_name='chatroom.html', context={
         'room_name': room_name
     })
+
+

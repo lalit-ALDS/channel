@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Audio Chat</title>
+</head>
+
+<body>
+    <h1>Audio Chat</h1>
+    <audio id="localAudio" autoplay muted></audio>
+    <audio id="remoteAudio" autoplay></audio>
+    {{ request.user.username|json_script:"user_username" }}
+    {{ room_name|json_script:"room-name" }}
+
+    <script>
+        const localAudio = document.getElementById('localAudio');
+        const remoteAudio = document.getElementById('remoteAudio');
+
+        const roomName = JSON.parse(document.getElementById('room-name').textContent);
+        console.log("room", roomName)
+
+        const webSocket = new WebSocket('wss://' + window.location.host + '/ws/chat/' + roomName + '/');
+
+        webSocket.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            // Handle incoming messages for signaling
+        };
+
+        // WebRTC setup logic
+        let localStream;
+        let remoteStream;
+        let peerConnection;
+
+        const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+        async function startLocalStream() {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            localAudio.srcObject = localStream;
+        }
+
+        async function createPeerConnection() {
+            peerConnection = new RTCPeerConnection(configuration);
+
+            peerConnection.onicecandidate = ({ candidate }) => {
+                if (candidate) {
+                    webSocket.send(JSON.stringify({ type: 'candidate', candidate }));
+                }
+            };
+
+            peerConnection.ontrack = (event) => {
+                remoteAudio.srcObject = event.streams[0];
+            };
+
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+        }
+
+        webSocket.onmessage = async (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.type === 'offer') {
+                await createPeerConnection();
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+                webSocket.send(JSON.stringify({ type: 'answer', answer }));
+            } else if (data.type === 'answer') {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+            } else if (data.type === 'candidate') {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            }
+        };
+
+        startLocalStream();
+    </script>
+</body>
+
+</html>

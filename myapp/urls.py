@@ -24,4 +24,5 @@ from . import views
 urlpatterns = [
     path("admin/", admin.site.urls),
     path('<str:room_name>/', views.room, name='room')
+    
 ]

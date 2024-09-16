@@ -37,9 +37,9 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
+    'channels',
     
-     'channels',
-     'rest_framework',
 ]
 
 ASGI_APPLICATION = 'myapp.asgi.application'
